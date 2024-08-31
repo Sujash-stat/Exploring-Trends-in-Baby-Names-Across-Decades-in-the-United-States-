@@ -1,0 +1,764 @@
+---
+title: "Exploring Trends in Baby Names Across Decades in the United States"
+author: "Group 20:  Tathagata Banerjee, Ketan Saini, Sujash Krishna Basak & Anjali Gond"
+date: "16 November 2023" 
+output: html_document
+---
+
+```{r setup, include=FALSE,warning=FALSE}
+# Set global options for figure width
+knitr::opts_chunk$set(fig.width = 14)
+```
+
+```{r,echo=FALSE,message=FALSE,warning=FALSE}
+### Code Prep (Variables)
+
+#Libraries
+library(ggplot2)
+library(tidyverse)
+library(dplyr)
+library(DT)
+library(gridExtra)
+
+# Reading Variables
+male <- read.csv(file = "Data/male.csv")
+female <- read.csv(file = "Data/female.csv")
+common <- read.csv(file = "Data/common.csv")
+common <- rbind(male,female)
+baby_names_data <- read.csv("Data/topusbabynames_bydecades.csv")
+
+#
+f.unique.let <- unique(as.vector(female$Name))
+m.unique.let <- unique(as.vector(male$Name))
+c.unique.let <- sort(append(m.unique.let, f.unique.let))
+
+no.unique.initial <- data.frame(Letter <- NULL, Gender <- NULL, Total <- NULL)
+for (i in 1:26) {
+    Letter <- LETTERS[i]
+    Gender <- "Male"
+    Total <- length(m.unique.let[startsWith(toupper(m.unique.let), LETTERS[i])])
+    new.row <- data.frame(Letter, Gender, Total)
+    no.unique.initial <- rbind(no.unique.initial, new.row)
+    Gender <- "Female"
+    Total <- length(f.unique.let[startsWith(toupper(f.unique.let), LETTERS[i])])
+    new.row <- data.frame(Letter, Gender, Total)
+    no.unique.initial <- rbind(no.unique.initial, new.row)
+}
+
+no.unique.last <- data.frame(Letter <- NULL, Gender <- NULL, Total <- NULL)
+for (i in 1:26) {
+  Letter <- LETTERS[i]
+  Gender <- "Male"
+  Total <- length(m.unique.let[endsWith(toupper(m.unique.let), LETTERS[i])])
+  new.row <- data.frame(Letter, Gender, Total)
+  no.unique.last <- rbind(no.unique.last, new.row)
+  Gender <- "Female"
+  Total <- length(f.unique.let[endsWith(toupper(f.unique.let), LETTERS[i])])
+  new.row <- data.frame(Letter, Gender, Total)
+  no.unique.last <- rbind(no.unique.last, new.row)
+  }
+
+barPlot_Initial_Letter <- ggplot(no.unique.initial, aes(x = Letter, y = Total, fill = Gender)) +
+      geom_bar(stat = "identity", position = "dodge") +
+      xlab("Initial Letters") +
+      ylab("Total Number of Names (in Millions)")
+
+barPlot_Last_Letter <- ggplot(no.unique.last, aes(x = Letter, y = Total, fill = Gender)) +
+      geom_bar(stat = "identity", position = "dodge") +
+      xlab("Last Letters") +
+      ylab("Total Number of Names (in Millions)")
+
+```
+
+
+# 1. Introduction
+
+Our project delves into the captivating world of baby names in the United States spanning from 1920 to 2010. Envision it as a journey through the evolving panorama of names over the years.
+
+###   Motivation
+
+Names transcend mere labels; they function as time capsules, offering insights into the societal trends of various decades. Our objective is to delve into these capsules, unraveling the stories they hold and deciphering how people's preferences for baby names have transformed.
+At the core of our exploration is the mission to unveil trends in US baby names across decades, distinguishing between timeless classics and passing fancies.
+
+<br>
+
+# 2. Data Set
+
+
+###   2.1 Rank Table
+
+
+We have gathered the top 100 names for each decade, culminating in a comprehensive dataset of 1,000 observations, encompassing both male and female babies.
+```{r,echo=FALSE}
+datatable(baby_names_data, options = list(pageLength = 5, lengthMenu = c(5, 10, 15)))
+```
+
+<br>
+
+#### In the provided dataset, the variables are outlined as follows: 
+
+```{r,echo=FALSE}
+variable_names <- c("Decade", "Decadewise Rank", "Male Name", "Number of Babies (Male)", "Female Name", "Number of Babies (Female)")
+descriptions <- c(
+  "Represents the decade under consideration, taking values from 1920 to 2010.",
+  "Denotes the rank of names within the respective decade, ranging from 1 to 100.",
+  "Signifies the male name corresponding to the given rank in that decade.",
+  "Specifies the number of babies with the corresponding male name.",
+  "Signifies the female name corresponding to the given rank in that decade.",
+  "Specifies the number of babies with the corresponding female name."
+)
+
+description_table <- data.frame(Variable = variable_names, Description = descriptions)
+knitr::kable(description_table)
+```
+
+<br>
+
+###   2.2 History and Origin 
+
+
+In addition to charting the trajectory of baby names in the United States from 1920 to 2010, our project extends its reach to compile a rich tapestry of information. We meticulously gather data on the history and origin of every name that has graced the top 100 rank list throughout these decades.
+This multifaceted approach allows us not only to track the ebb and flow of naming preferences but also to unravel the fascinating stories behind each name. 
+
+Instead of static databases, we opt for real-time data scraping directly from the source.
+To bring this dynamic data to life, we showcase it seamlessly on our custom-designed RShiny app, specifically crafted for detailed Name-specific Analysis. The app serves as a vibrant portal, allowing users to explore the intricacies of baby names in the United States. 
+
+The coming sections our report will give more details on why this data was not stored statically and used in visualisation
+
+<br>
+
+# 3. Obtaining the data 
+
+
+
+Our dataset, on Rank Table, has been acquired through web scraping from the official Social Security website of the United States, https://www.ssa.gov. <br> The supplementary layer has been acquired through diligent web scraping from https://www.behindthename.com/, providing a comprehensive perspective on the historical roots and origin stories associated with each name.
+
+<br>
+
+### 3.1 Source and Reliability
+The Social Security website serves as a trusted repository of demographic data, including comprehensive information on baby names in the United States. By obtaining our dataset directly from this official source, we enhance the reliability of our findings, instilling confidence in the accuracy and authenticity of the information presented.
+To enhance the trustworthiness of the historical and origin data obtained from https://www.behindthename.com, we conducted a thorough validation process. Importantly, Behindthename.com provided additional links to support their information, reinforcing the validity of the presented details. 
+
+<br>
+
+### 3.2 Data Scrapping and Processing
+
+The process of data scraping from the ssa.gov website proved to be manageable. 
+Acquiring information on the top-ranked names for each decade involved extracting data from various webpages. To streamline this, we created a deticated function. The baby counts contained commas as separators, which were removed for convenience during data processing.
+
+Acquiring data from behindthename.com posed specific challenges due to the variable number of fields for various pieces of information. Due to this variability, scraping proved challenging, and as a result, certain data were left unscraped. The complexity further increased as each name necessitated visiting a new webpage. However, we successfully collected data from each webpage, and subsequently, the relevant information was meticulously cleaned
+
+<br>
+
+### 3.3 Potential Sources of Bias or Misinformation:
+
+- Early Decades' Data Collection Inefficiencies: In the early decades, the data collection system may not have been as efficient, potentially leading to incomplete registrations of names.Changes in policies, administrative practices, or data collection methods can affect the consistency and accuracy of the data.
+- The data available on ssa.gov is derived exclusively from individuals who registered for a Social Security Number (SSN). Consequently, individuals who did not register for an SSN are not represented in this dataset.
+
+<br>
+
+
+# 4. Interesting questions to ask from the data: 
+
+Our analysis will address several intriguing questions based on the dataset:
+
+1. Evolution of Popularity:
+How has the popularity—measured by rank and the number of babies with the top-ranked names—changed over the decades?
+
+2. Temporal Popularity Patterns:
+Which names have experienced fleeting popularity over just one or two decades, and which names have consistently maintained their popularity?
+
+3. Gender-Based Ending Letters:
+How does the presence or absence of a vowel sound in the ending letter vary between male and female names?
+
+4. Temporal Trends in Initial Letters & Last Letter:
+How much the popularity of a name depended on the initial and last letter of the name?
+
+5. Name Length and Popularity:
+How does the popularity of names differ based on the length of the name, considering both male and female names?
+
+6. Cross-Gender Popularity:
+Are there any names that have achieved top rankings in both male and female categories?
+
+<br>
+
+# 5. Normal Insights Through Data Analysis and Visualization
+
+<br>
+
+### 5.1 Top Name vs Total Number of babies
+
+```{r,echo=FALSE}
+#Horizontal line plot
+library(ggplot2)
+suppressWarnings({library(knitr)})
+suppressWarnings({library(gridExtra)})
+
+data = read.csv("topusbabynames_bydecades.csv")
+# Calculate total number of births for each male name
+total_births <- aggregate(No..of.babies.F. ~ Female.Name, data = data , FUN = sum)
+
+# Sort the data by total number of births in descending order
+sorted_data <- total_births[order(-total_births$No..of.babies.F.), ]
+
+# Select top 50 and bottom 50 male names
+top_50 <- head(sorted_data, 50)
+bottom_50 <- tail(sorted_data, 50)
+
+# Create horizontal line plots for top 50 and bottom 50 male names
+plot_top_50 <- ggplot(top_50, aes(y = reorder(Female.Name, No..of.babies.F.), x = No..of.babies.F.)) +
+  geom_point() +
+  geom_segment(aes(xend = 0, yend = reorder(Female.Name, No..of.babies.F.)), color = "magenta") +
+  labs(y = "Female Names", x = "Total Number of Babies", title = "Top 50 Female Names") +
+  theme(axis.text.y = element_text(hjust = 1))
+
+plot_bottom_50 <- ggplot(bottom_50, aes(y = reorder(Female.Name, No..of.babies.F.), x = No..of.babies.F.)) +
+  geom_point() +
+  geom_segment(aes(xend = 0, yend = reorder(Female.Name, No..of.babies.F.)), color = "magenta") +
+  labs(y = "Female Names", x = "Total Number of Babies", title = "Bottom 50 Female Names") +
+  theme(axis.text.y = element_text(hjust = 1))
+
+# Arrange plots side by side
+grid.arrange(plot_top_50, plot_bottom_50, ncol = 2)
+```
+
+
+
+
+```{r,echo=FALSE}
+library(ggplot2)
+library(gridExtra)
+data = read.csv("topusbabynames_bydecades.csv")
+# Calculate total number of births for each male name
+total_births <- aggregate(No..of.babies.M. ~ Male.Name, data = data, FUN = sum)
+
+# Sort the data by total number of births in descending order
+sorted_data <- total_births[order(-total_births$No..of.babies.M.), ]
+
+# Select top 50 and bottom 50 male names
+top_50 <- head(sorted_data, 50)
+bottom_50 <- tail(sorted_data, 50)
+
+# Create horizontal line plots for top 50 and bottom 50 male names
+plot_top_50 <- ggplot(top_50, aes(y = reorder(Male.Name, No..of.babies.M.), x = No..of.babies.M.)) +
+  geom_point() +
+  geom_segment(aes(xend = 0, yend = reorder(Male.Name, No..of.babies.M.)), color = "blue") +
+  labs(y = "Male Names", x = "Total Number of Babies", title = "Top 50 Male Names") +
+  theme(axis.text.y = element_text(hjust = 1))
+
+plot_bottom_50 <- ggplot(bottom_50, aes(y = reorder(Male.Name, No..of.babies.M.), x = No..of.babies.M.)) +
+  geom_point() +
+  geom_segment(aes(xend = 0, yend = reorder(Male.Name, No..of.babies.M.)), color = "blue") +
+  labs(y = "Male Names", x = "Total Number of Babies", title = "Bottom 50 Male Names") +
+  theme(axis.text.y = element_text(hjust = 1))
+
+# Arrange plots side by side
+grid.arrange(plot_top_50, plot_bottom_50, ncol = 2)
+```
+
+##### **5.1.a Top Female Name vs Total Number of babies:-**
+
+- Mary holds the top spot as the most popular female name, with Patricia and Jennifer following closely. Notably, there is a significant decline in popularity from Mary to Patricia.
+- Annabelle emerges as the least favored female name on the list, with a total count of fewer than 30,000 babies.
+- The names at the lower end of the popularity scale have markedly fewer instances compared to the top names. This discrepancy may be attributed to their sporadic appearance across decades. In instances where these names are absent in certain decades, they are recorded as having zero occurrences.
+
+##### **5.1.b Top Male Name vs Total Number of babies:-**
+* James claims the title of the most popular male name, closely trailed by John. Notably, both names share the same initial, 'J.'
+* The overall count of names experiences intermittent drops, even within the top ranks.
+* Names such as Oscar, Edgar, and Gilbert emerge as the least favored, each having fewer than 20,000 occurrences in the list.
+
+
+<br>
+<br>
+
+### 5.2 Top Name vs Total Number of Decades
+```{r,echo=FALSE}
+library(ggplot2)
+data = read.csv("topusbabynames_bydecades.csv")
+
+
+countf_names = aggregate(No..of.babies.F.~ Female.Name,data = data, FUN = length)
+
+countm_names = aggregate(No..of.babies.M. ~ Male.Name, data = data, FUN = length)
+
+total_birthsf <- aggregate(No..of.babies.F. ~ Female.Name, data = data, FUN = sum)
+total_birthsm <- aggregate(No..of.babies.M. ~ Male.Name, data = data, FUN = sum)
+final_f <- cbind(countf_names,total_birthsf)
+final_f = final_f[,c(1,2,4)]
+final_m <- cbind(countm_names, total_birthsm)
+final_m <- final_m[,c(1,2,4)]
+colnames(final_f) = c("Female_Name_Fin","Count","Total")
+colnames(final_m) = c("Male_Name_Fin","Count","Total")
+
+sorted_dataf <- final_f[order(-final_f$Total,-final_f$Count),]
+sorted_datam <- final_m[order(-final_m$Total,-final_m$Count),]
+
+top_50f = head(sorted_dataf,50)
+bottom_50f = tail(sorted_dataf,50)
+
+top_50m = head(sorted_datam,50)
+bottom_50m = tail(sorted_datam,50)
+top_50f = top_50f[,1:3]
+
+plot_top_50f <- ggplot(top_50f, aes(y = reorder(Female_Name_Fin,Total), x = Count)) +
+  geom_point() +
+  geom_segment(aes(xend = 0, yend = reorder(Female_Name_Fin, Total)), color = "magenta") +
+  labs(y = "Female Names", x = "Total Number of Decades", title = "Top 50 Female Names") +
+  theme(axis.text.y = element_text(hjust = 1))
+
+plot_bottom_50f <- ggplot(bottom_50f, aes(y = reorder(Female_Name_Fin,Total), x = Count)) +
+  geom_point() +
+  geom_segment(aes(xend = 0, yend = reorder(Female_Name_Fin, Total)), color = "magenta") +
+  labs(y = "Female Names", x = "Total Number of Decades", title = "Bottom 50 Female Names") +
+  theme(axis.text.y = element_text(hjust = 1))
+
+
+
+
+library(gridExtra)
+# Arrange plots side by side
+grid.arrange(plot_top_50f, plot_bottom_50f, ncol = 2)
+```
+
+
+
+```{r,echo=FALSE}
+library(ggplot2)
+data = read.csv("topusbabynames_bydecades.csv")
+
+
+countf_names = aggregate(No..of.babies.F.~ Female.Name,data = data, FUN = length)
+
+countm_names = aggregate(No..of.babies.M. ~ Male.Name, data = data, FUN = length)
+
+total_birthsf <- aggregate(No..of.babies.F. ~ Female.Name, data = data, FUN = sum)
+total_birthsm <- aggregate(No..of.babies.M. ~ Male.Name, data = data, FUN = sum)
+final_f <- cbind(countf_names,total_birthsf)
+final_f = final_f[,c(1,2,4)]
+final_m <- cbind(countm_names, total_birthsm)
+final_m <- final_m[,c(1,2,4)]
+colnames(final_f) = c("Female_Name_Fin","Count","Total")
+colnames(final_m) = c("Male_Name_Fin","Count","Total")
+
+sorted_dataf <- final_f[order(-final_f$Total,-final_f$Count),]
+sorted_datam <- final_m[order(-final_m$Total,-final_m$Count),]
+
+top_50f = head(sorted_dataf,50)
+bottom_50f = tail(sorted_dataf,50)
+
+top_50m = head(sorted_datam,50)
+bottom_50m = tail(sorted_datam,50)
+top_50f = top_50f[,1:3]
+
+library(gridExtra)
+# Arrange plots side by side
+plot_top_50m <- ggplot(top_50m, aes(y = reorder(Male_Name_Fin,Total), x = Count)) +
+  geom_point() +
+  geom_segment(aes(xend = 0, yend = reorder(Male_Name_Fin, Total)), color = "blue") +
+  labs(y = "Male Names", x = "Total Number of Decades", title = "Top 50 Male Names") +
+  theme(axis.text.y = element_text(hjust = 1))
+
+plot_bottom_50m <- ggplot(bottom_50m, aes(y = reorder(Male_Name_Fin,Total), x = Count)) +
+  geom_point() +
+  geom_segment(aes(xend = 0, yend = reorder(Male_Name_Fin, Total)), color = "blue") +
+  labs(y = "Male Names", x = "Total Number of Decades", title = "Bottom 50 Male Names") +
+  theme(axis.text.y = element_text(hjust = 1))
+
+library(gridExtra)
+# Arrange plots side by side
+grid.arrange(plot_top_50m, plot_bottom_50m, ncol = 2)
+
+```
+
+##### **5.2.a Top Female Name vs Total Number of Decades:-**
+* The top 50 female names show fluctuating patterns when we consider the number of decades they have been popular for. The top name,Mary,has been popular for only 8 decades. Elizabeth and Katherine(which is not in the top 25),are the only names in the top 50 that have appeared in all decades.
+* All the bottom 50 names have appeared in only 1 decade,and hence the total number of babies for those names is very less compared to the top ones. 
+
+
+##### **5.2.b Top Male Name vs Total Number of Decades:-**
+
+* It can be observed that the top 5 most popular names have all been popular throughout 10 decades, and most of the top names are so. 
+* "Christopher" is the topmost name having appeared in less than 8 decades,but it's recent popularity has pushed it up the ranks. Samuel has been a name consistenly moderately popular,ranking close to 50 even after being in top 100 in all decades. 
+* Similar to the female names,most of the bottom male names have been popular for just one or two decades.
+
+<br>
+<br>
+
+
+### 5.3 Mean Rank vs Decades (Name Length)
+
+```{r,echo=FALSE}
+#Scatterplot
+library(ggplot2)
+library(gridExtra)
+data = read.csv("topusbabynames_bydecades.csv")
+calculateNameLength <- function(name) {
+  nchar(gsub("[^A-Za-z]", "", name))
+}
+
+
+# Calculate name length for males and females
+data$Male.Name.Length <- sapply(data$Male.Name, calculateNameLength)
+data$Female.Name.Length <- sapply(data$Female.Name, calculateNameLength)
+
+# Calculate mean rank for males and females
+male_mean_rank <- aggregate(Decadewise.Rank ~ Decade + Male.Name.Length, data = data, FUN = mean)
+female_mean_rank <- aggregate(Decadewise.Rank ~ Decade + Female.Name.Length, data = data, FUN = mean)
+
+# Plot for female names with legend outside the plot based on color and name length
+par(mfrow= c(2,1))
+
+plot1 = ggplot(data = female_mean_rank, aes(x = Decade, y = Decadewise.Rank, color = factor(Female.Name.Length))) +
+  geom_point(size = 3, shape = 16) +
+  labs(title = "Mean Rank vs. Decade for Females",
+       x = "Decade",
+       y = "Mean Rank",
+       color = "Name Length") +
+  theme_minimal() +
+  theme(legend.position = "top") +
+  
+  # Set custom breaks and limits on the x-axis
+  scale_x_continuous(breaks = seq(1910, 2020, by = 10), limits = c(1910, 2020), expand = c(0, 0))
+
+plot2 = ggplot(data = male_mean_rank, aes(x = Decade, y = Decadewise.Rank, color = factor(Male.Name.Length))) +
+  geom_point(size = 3, shape = 16) +
+  labs(title = "Mean Rank vs. Decade for Males",
+       x = "Decade",
+       y = "Mean Rank",
+       color = "Name Length") +
+  theme_minimal() +
+  theme(legend.position = "top") +
+  
+  # Set custom breaks and limits on the x-axis
+  scale_x_continuous(breaks = seq(1910, 2020, by = 10), limits = c(1910, 2020), expand = c(0, 0))
+
+grid.arrange(plot1,plot2,ncol=2)
+
+```
+
+
+##### **5.3.a Mean Rank vs Decade:-**
+
+* Among females, moderately long names with 5,6,7 and 9 letters have been consistently moderately popular.3 letter names look like they have been very popular recently , possibly due to a specific name(“Ava”). 10 letter names have been consistently less popular,possibly because parents prefer shorter names for their daughters.
+* Among males,moderately long names with 5,6 and 7 letters have been moderately popular.3 letter names saw a drop in popularity but regained it to an extent after 1970. 11 letter names look like they have been very popular recently, due to the name “Christopher” which has been the most popular name in 1970,1980 and 1990.
+
+<br>
+<br>
+
+### 5.4 Mean Rank vs Decades (Initial Letter)
+
+```{r,echo=FALSE,message=FALSE}
+library(ggplot2)
+library(gridExtra)
+data = read.csv("topusbabynames_bydecades.csv")
+calculateNameLength <- function(name) {
+  substr(name,"1","1")
+}
+
+
+# Calculate name length for males and females
+data$Male.Name.Length <- sapply(data$Male.Name, calculateNameLength)
+data$Female.Name.Length <- sapply(data$Female.Name, calculateNameLength)
+
+# Calculate mean rank for males and females
+male_mean_rank <- aggregate(Decadewise.Rank ~ Decade + Male.Name.Length, data = data, FUN = mean)
+female_mean_rank <- aggregate(Decadewise.Rank ~ Decade + Female.Name.Length, data = data, FUN = mean)
+
+# Plot for female names with legend outside the plot based on color and name length
+male_agg=aggregate(Decadewise.Rank~Male.Name.Length,data=male_mean_rank,mean)
+suppressWarnings({library(dplyr)})
+male_top=arrange(male_agg,male_agg$Decadewise.Rank)[1:10,1]
+
+fem_agg=aggregate(Decadewise.Rank~Female.Name.Length,data=female_mean_rank,mean)
+fem_top=arrange(fem_agg,fem_agg$Decadewise.Rank)[1:10,1]
+final_m = subset(male_mean_rank, Male.Name.Length %in% male_top)
+final_f = subset(female_mean_rank,Female.Name.Length %in% fem_top)
+
+plot1 = ggplot(data = final_f, aes(x = Decade, y = Decadewise.Rank, color = factor(Female.Name.Length))) +
+  geom_point(size = 3, shape = 16) +
+  labs(title = "Mean Rank vs. Decade for Females",
+       x = "Decade",
+       y = "Mean Rank",
+       color = "Initial Letter") +
+  theme_minimal() +
+  theme(legend.position = "top") +
+  theme(plot.background = element_rect(fill = "gray"))+
+  
+  # Set custom breaks and limits on the x-axis
+  scale_x_continuous(breaks = seq(1910, 2020, by = 10), limits = c(1910, 2020), expand = c(0, 0))
+
+plot2 = ggplot(data = final_m, aes(x = Decade, y = Decadewise.Rank, color = factor(Male.Name.Length))) +
+  geom_point(size = 3, shape = 16) +
+  labs(title = "Mean Rank vs. Decade for Males",
+       x = "Decade",
+       y = "Mean Rank",
+       color = "Initial Letter") +
+  theme_minimal() +
+  theme(legend.position = "top") +
+  theme(plot.background = element_rect(fill = "gray")) +
+  
+  # Set custom breaks and limits on the x-axis
+  scale_x_continuous(breaks = seq(1910, 2020, by = 10), limits = c(1910, 2020), expand = c(0, 0))
+
+grid.arrange(plot1,plot2,ncol=2)
+
+
+
+```
+
+##### **5.4.a Mean Rank vs Decade:-**
+
+* Among females, N has been a popular initial recently. S,D and R have been consistently moderately popular. Z has been an uncommon initial,popular for only 1 decade.
+* Among males, W has been very popular recently, probably due to “William”. K was popular in the past,but has fallen in ranks now.J, D and M have been consistently moderately popular.
+
+<br>
+<br>
+
+# 6. Intresting Insights Through Data Analysis and Visualization
+
+<br>
+
+### 6.1 Intial and Last Letter of Names
+
+```{r,echo=FALSE}
+library(ggplot2)
+data = read.csv("topusbabynames_bydecades.csv")
+extract_last_letter <- function(name) {
+  last_letter <- substr(name, nchar(name), nchar(name))
+  return(last_letter)
+}
+vowels = c("a","e","i","o", "u","y")
+# Applying the function to the vector of names
+last_lettersm <- sapply(data$Male.Name, extract_last_letter)
+last_lettersf <- sapply(data$Female.Name, extract_last_letter)
+
+
+count_vowels_f = sum(last_lettersf %in% vowels)
+count_vowels_m = sum(last_lettersm %in% vowels)
+
+last_lettersm_unique <- sapply(unique(data$Male.Name), extract_last_letter)
+last_lettersf_unique <- sapply(unique(data$Female.Name), extract_last_letter)
+
+
+count_vowels_f_unique = sum(last_lettersf_unique %in% vowels)/length(unique(data$Female.Name))
+count_vowels_m_unique = sum(last_lettersm_unique %in% vowels)/length(unique(data$Male.Name))
+
+x = c("Females","Males")
+count1 = c(count_vowels_f,count_vowels_m)
+count2 = c(count_vowels_f_unique,count_vowels_m_unique)
+df = as.data.frame(cbind(x,count1,count2))
+
+# Create a bar plot
+plot1 = ggplot(df, aes(x , y = count1, fill = count1)) +
+  geom_bar(stat = "identity", position = "dodge", alpha = 0.7) +
+  labs(title = "No. of Names ending with vowels",
+       y = "Total no. of Names") +
+  scale_fill_manual(values = c("blue","magenta"),name = "Categories",labels = c("Males","Females"))+
+  theme_minimal()
+
+plot2 = ggplot(df, aes(x , y = count2, fill = count2)) +
+  theme(plot.title = element_text(hjust=0)) +
+  geom_bar(stat = "identity", position = "dodge", alpha = 0.7) +
+  labs(title = "Unique vowel ending Names",
+       y = "Proportion of Unique Names") +
+  scale_fill_manual(values = c("blue","magenta"),name = "Categories",labels = c("Males","Females"))+
+  theme_minimal()
+
+library(gridExtra)
+grid.arrange(plot1, plot2, ncol = 2)
+```
+
+```{r,echo=FALSE,message=FALSE,warning=FALSE}
+### Code Prep (Variables)
+
+#Libraries
+library(ggplot2)
+library(tidyverse)
+library(dplyr)
+library(DT)
+library(gridExtra)
+
+# Reading Variables
+male <- read.csv(file = "Data/male.csv")
+female <- read.csv(file = "Data/female.csv")
+common <- read.csv(file = "Data/common.csv")
+common <- rbind(male,female)
+baby_names_data <- read.csv("Data/topusbabynames_bydecades.csv")
+
+#
+f.unique.let <- unique(as.vector(female$Name))
+m.unique.let <- unique(as.vector(male$Name))
+c.unique.let <- sort(append(m.unique.let, f.unique.let))
+
+no.unique.initial <- data.frame(Letter <- NULL, Gender <- NULL, Total <- NULL)
+for (i in 1:26) {
+    Letter <- LETTERS[i]
+    Gender <- "Male"
+    Total <- length(m.unique.let[startsWith(toupper(m.unique.let), LETTERS[i])])
+    new.row <- data.frame(Letter, Gender, Total)
+    no.unique.initial <- rbind(no.unique.initial, new.row)
+    Gender <- "Female"
+    Total <- length(f.unique.let[startsWith(toupper(f.unique.let), LETTERS[i])])
+    new.row <- data.frame(Letter, Gender, Total)
+    no.unique.initial <- rbind(no.unique.initial, new.row)
+}
+
+no.unique.last <- data.frame(Letter <- NULL, Gender <- NULL, Total <- NULL)
+for (i in 1:26) {
+  Letter <- LETTERS[i]
+  Gender <- "Male"
+  Total <- length(m.unique.let[endsWith(toupper(m.unique.let), LETTERS[i])])
+  new.row <- data.frame(Letter, Gender, Total)
+  no.unique.last <- rbind(no.unique.last, new.row)
+  Gender <- "Female"
+  Total <- length(f.unique.let[endsWith(toupper(f.unique.let), LETTERS[i])])
+  new.row <- data.frame(Letter, Gender, Total)
+  no.unique.last <- rbind(no.unique.last, new.row)
+  }
+
+barPlot_Initial_Letter <- ggplot(no.unique.initial, aes(x = Letter, y = Total, fill = Gender)) +
+      geom_bar(stat = "identity", position = "dodge") +
+      xlab("Initial Letters") +
+      ylab("Total Number of Names (in Millions)")
+
+barPlot_Last_Letter <- ggplot(no.unique.last, aes(x = Letter, y = Total, fill = Gender)) +
+      geom_bar(stat = "identity", position = "dodge") +
+      xlab("Last Letters") +
+      ylab("Total Number of Names (in Millions)")
+
+### Initial and Last Letter Plot
+grid.arrange(barPlot_Initial_Letter,barPlot_Last_Letter, ncol = 2)
+
+```
+
+##### **6.1.a Observations:-**
+
+- From the plots, it is evident that female names exhibit a preference for ending with vowel sounds. Across decades, the total number of female names within the top 100 ranks is more than twice that of male names.
+
+- When considering the proportion of unique names, the disparity becomes more pronounced. Approximately 74% of female names conclude with vowel sounds, whereas only 27% of male names share this characteristic.
+
+- Consequently, if a name concludes with a vowel sound, it is significantly more likely to be associated with a female name than a male name. Conversely, for names concluding with a consonant sound, the likelihood of it being a male name is higher.
+
+- Even though girls constitute a smaller proportion of the overall population, the prevalence of names ending with the letter "A" among them is quite astonishing.
+
+<br>
+<br>
+
+### 6.2 Common Names (Gender Neutral)
+```{r,echo=FALSE}
+
+#plot of common names
+data = read.csv("topusbabynames_bydecades.csv")
+mn=data$Male.Name
+fn=data$Female.Name
+store=intersect(mn,fn)
+mn1 = numeric(length = 20)
+fn1 = numeric(length=20)
+j = 1
+
+mn1= c(28,133,238,353,492,232,329,437,569,579,660,728,838,961,765)
+fn1 = c(72,397,540,634,785,753,875,709,817,969)
+malecom = data[mn1,]
+
+femalecom = data[fn1,]
+
+com = rbind(malecom,femalecom)
+
+gender = c(rep("M",15),rep("F",10))
+
+com = cbind(com,gender)
+
+name = c(com[1:15,3],com[16:25,5])
+
+com = cbind(com,name)
+
+com = com[,c(1,2,7,8)]
+
+colnames(com) = c("Decade","Decadewise.Rank","Gender","Name")
+
+
+ggplot(com, aes(x = Decade, y = Decadewise.Rank, color = Name)) +
+  geom_point(aes(shape = Gender), size = 3) +
+  geom_line(aes(group = interaction(Name, Gender))) +
+  labs(title = "Rank of Common Names across Decades",
+       x = "Decade",
+       y = "Rank",fontface = "bold",
+       fontsize = 20,
+       title.position = c(5, 1)) +
+  theme_minimal() +
+  theme(plot.background = element_rect(fill = "gray")) +
+  guides(label.position = "bottom")
+
+```
+
+##### **6.2.a Observations:-**
+
+* Jamie,Jordan,Terry,Taylor and Willie are the five names common between males and females.
+* The common names have been popular at similar times for either gender.
+* Among common names, only Taylor has reached the very top ranks among females.The others have been moderately or less popular among top ranks.
+
+
+# 7. Limitation
+
+They rise in popularity, enjoy a period of dominance, and then fall. “Emma” and “Liam” will be hot for a while, until suddenly … they’re not.
+But why? What makes a name suddenly pop—and then die?
+
+The driving force behind these fluctuations is often linked to pop culture. Parents draw inspiration from a myriad of sources, including their favorite celebrities and characters from best-selling books.
+
+It's evident that the popularity of names is influenced by a multitude of factors. While analyzing the history and origin of every name is beyond our scope, we have conducted research on some prominent ones.
+
+**Anomalies :-**
+
+- The female name "Aria" has experienced a surge in popularity, likely influenced by the well-known character from the web series "Game of Thrones."
+
+- When Kool and the Gang’s song “Joanna” hit the Billboard Hot 100 List in 1984, the name Joanna shot up in popularity. The same thing happened to “Rosanna” after Toto’s song of that name in 1982.
+
+- Political events can also wield influence on naming trends. Following Ronald Reagan's presidency in the 80s, the name "Reagan"—once relatively uncommon—experienced a notable surge in popularity, eventually securing a place in the top 100 names by 2010.
+
+
+# 8. Conclusion
+
+In this project, we delved into the popularity trends of the most favored male and female baby names in the U.S. spanning the past ten decades. Our exploration encompassed factors such as diverse name choices, variations in initial and ending letters, and differences in name lengths.
+
+**Methodology:**
+
+For our analysis, we employed metrics such as the total number of babies and the mean rank corresponding to various factors, providing a comprehensive view of name popularity.
+
+**Key Insights:**
+
+- Biblical Origins Dominating:
+Mary emerges as the foremost female name, while James and John reign as the leading male names, all rooted in biblical origins.
+
+- Length Matters:
+Names with moderate lengths (5, 6, 7 characters) consistently maintain moderate popularity. Distinct short (e.g., Ava) and long (e.g., Christopher) names exhibit heightened popularity among females and males, respectively.
+
+- Initial Letter Influence:
+The initial "J" stands out as the most popular for males and exhibits considerable popularity among females as well.
+
+- Variety in Female Initials:
+Females exhibit a broader spectrum of popular initials compared to males.
+
+- Temporal Dynamics of Initial Choices:
+The preference for initial letters has significantly fluctuated over time for both genders, with only a select few maintaining consistent popularity.
+
+- Gendered Ending Sounds:
+Notably, female names predominantly conclude with vowel sounds, while male names typically end with consonants.
+
+- Gender-Neutral Names:
+While names like Jamie, Jordan, Taylor, Terry, and Willie are popular across genders, their moderate popularity within each gender suggests that parents may not commonly opt for gender-neutral names for their children.
+
+- Increased Variety in Names:
+Back in 1900, for example, 91% of all children of any gender were given a name from the top 1,000 most popular names. But a century later in 2000, only 75% of girls were given a name from the top 1,000 most-popular girl names, and that percentage had dropped for boys too, to 86%. In other words, more kids were getting names that would have been considered unusual or new. (This data was also collected from ssa.gov)
+
+# 9. Acknowledgement
+
+We want to express our special thanks of gratitude to our professor Dr Dootika Vats, who gave us this fantastic opportunity to do this great project of Data Science on "Exploring Trends in Baby Names" and who also helped us out at various stages and eventually helped us in completing the project with our best efforts and in time. We learnt a lot of new things throughout this project's journey, and it was an amazing experience for us as a team to understand and implement things collaboratively. 
+
+# 10. References:-
+
+- https://www.ssa.gov/oact/babynames/decades/names2010s.html
+
+- https://www.behindthename.com/
+
+
+```
